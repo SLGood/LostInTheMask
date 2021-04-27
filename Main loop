@@ -1,0 +1,38 @@
+# Resources
+# https://www.creativefabrica.com/product/night-city-background-with-many-building-4/ -- City background
+# https://line.17qq.com/articles/ttshwrhx.html -- School background
+# https://i.pinimg.com/originals/7b/31/4c/7b314ccbba528a0fc578be5f815b518a.jpg -- Wooden background
+
+
+import pygame
+import level_manager
+
+
+pygame.init()
+
+
+win_dim = (1000, 750)
+win = pygame.display.set_mode(win_dim)
+caption = pygame.display.set_caption('Lost in the Mask')
+clock = pygame.time.Clock()
+game = level_manager.Game(win, clock)
+done = False
+debug = False
+pause = False
+
+
+while not done:
+    gameEvent = pygame.event.get()
+    for event in gameEvent:
+        if event.type == pygame.QUIT:
+            done = True
+            break
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+            debug = not debug
+
+    game.update()
+    game.input(debug, pause, gameEvent)
+    game.draw()
+
+
+pygame.quit()
