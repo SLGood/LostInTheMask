@@ -1,0 +1,280 @@
+### P L A Y E R     C O D E ###
+
+class Player:
+    def __init__(self, game):
+        """The constructor"""
+        self.image = pygame.Surface((60, 90))
+        self.rect = self.image.get_rect()
+        self.pos = vector.Vector(500, 325)      # [500, 325]
+        self.velocity = vector.Vector(0, 0)     # [0, 0]
+        self.speed = 200
+        self.isJump = False
+        self.jumpCount = int(6.0)
+        self.health = 2
+        self.state = "Nothing"
+        self.game = game
+
+
+    def input(self):
+        """Edit input given to the player"""
+        # Variables
+        key = self.game.keyPress
+        speed = self.speed
+
+        # Move player
+        if key[pygame.K_a]:
+            self.pos[0] -= speed * self.game.deltaTime
+        if key[pygame.K_d]:
+            self.pos[0] += speed * self.game.deltaTime
+
+        # Sprint
+        if key[pygame.K_LSHIFT] or key[pygame.K_RSHIFT]:
+            self.speed = 400
+        elif self.state == "Math":
+            if key[pygame.K_LSHIFT] or key[pygame.K_RSHIFT]:
+                self.speed = 500
+        else:
+            self.speed = 200
+
+        # Lunch state -- player has more health
+        if self.state == "Lunch":
+            self.health = 3
+
+        # Gym state -- player can jump
+        if self.state == "Gym":
+            if key[pygame.K_SPACE]:
+                self.isJump = True
+            if self.isJump:
+                self.state = "Gym"
+                if self.jumpCount >= int(-6.0):
+                    neg = 1
+                    if self.jumpCount < 0:
+                        neg = -1
+                    self.pos[1] -= (self.jumpCount ** 2) * 0.5 * neg
+                    self.jumpCount -= 0.25
+                else:
+                    self.isJump = False
+                    self.jumpCount = int(6.0)
+
+
+    def draw(self):
+        """Draw the player"""
+        pos_to_screen = self.game.world_to_screen(self.pos)
+        pygame.draw.rect(self.game.surf, (0, 200, 255), (pos_to_screen[0] - 30, pos_to_screen[1] - 45, 60, 90))
+        if self.game.debug:
+            pygame.draw.rect(self.game.surf, (255, 255, 255),
+                             (pos_to_screen[0] - 30, pos_to_screen[1] - 45, 60, 90), 1)
+            pygame.draw.circle(self.game.surf, (255, 0, 0), (pos_to_screen[0], pos_to_screen[1]), 3)
+            
+            
+class BoxCollide:
+    """A class that returns a rectangular surface"""
+    def __init__(self, x, y, w, h, color, game):
+        """The constructor"""
+        self.image = pygame.Surface((w, h))
+        self.rect = self.image.get_rect()
+        self.rect_pos = [x, y]
+        self.rect_dim = [w, h]
+        self.box_rect = pygame.Rect(x, y, w, h)
+        self.color = color
+        self.game = game
+
+
+    def draw(self):
+        """Draw the box"""
+        box_pos = self.game.world_to_screen(self.rect_pos)
+        pygame.draw.rect(self.game.surf, self.color,
+                         (box_pos[0], box_pos[1], self.rect_dim[0], self.rect_dim[1]))
+
+
+### B O X     C O L L I S I O N     C O D E ###
+
+
+class BoxCollideHidden:
+    """A class that returns a invisible rectangular surface (can turn visible with F1)"""
+    def __init__(self, x, y, w, h, game):
+        """The constructor"""
+        self.image = pygame.Surface((w, h))
+        self.rect = self.image.get_rect()
+        self.rect_pos = [x, y]
+        self.rect_dim = [w, h]
+        self.box_rect = pygame.Rect(x, y, w, h)
+        self.color = (0, 0, 255)
+        self.game = game
+
+
+    def draw(self):
+        """Draw the box"""
+        if self.game.debug:
+            box_pos = self.game.world_to_screen(self.rect_pos)
+            pygame.draw.rect(self.game.surf, self.color,
+                             (box_pos[0], box_pos[1], self.rect_dim[0], self.rect_dim[1]), 1)
+                             
+                             
+### I N V E N T O R Y     C O D E ###
+
+
+class Mask:
+    """An individual mask in the inventory"""
+
+    def __init__(self, x, y, surf):
+        """The constructor"""
+        self.pos = [x, y]
+        self.surf = surf
+        self.mask_color = (255, 0, 0)
+        self.color = (255, 100, 0)
+
+    def draw_mask(self):
+        """Draw the mask slots"""
+        pygame.draw.rect(self.surf, self.color, (self.pos[0], self.pos[1], 50, 50))
+
+
+class Slot:
+    """An individual slot in the inventory"""
+
+    def __init__(self, x, y, surf):
+        """The constructor"""
+        self.pos = [x, y]
+        self.surf = surf
+        self.normColor = (100, 100, 100)
+        self.lightColor = (0, 255, 100)
+        self.highlighted = False
+
+    def draw_slots(self):
+        """Draw the inventory slots"""
+        if self.highlighted:
+            pygame.draw.rect(self.surf, self.lightColor, (self.pos[0], self.pos[1], 65, 65), 1)
+        else:
+            pygame.draw.rect(self.surf, self.normColor, (self.pos[0], self.pos[1], 65, 65), 1)
+
+
+class Inventory:
+    """Simple inventory class"""
+
+    def __init__(self, surf, player, game):
+        """The constructor"""
+        self.count = 5
+        self.surf = surf
+        self.player = player
+        self.game = game
+
+    def create_slot(self):
+        """Creates a slot"""
+        slot_list = []
+        x = 50
+        y = 50
+        for i in range(0, 5):
+            slot_list.append(Slot(x, y, self.surf))
+            x += 65
+
+        return slot_list
+
+    def create_mask(self):
+        """Creates a mask"""
+        mask_list = []
+        x = int(57.5)
+        y = int(57.5)
+        for i in range(0, 5):
+            mask_list.append(Mask(x, y, self.surf))
+            x += 65
+
+        return mask_list
+
+    def input(self):
+        """Detect user input"""
+        self.slot = self.create_slot()
+        self.mask = self.create_mask()
+        for evt in self.game.gameEvent:
+            if evt.type == pygame.KEYDOWN and evt.key == pygame.K_1 and self.player.isJump == False:
+                self.slot[0].highlighted = not self.slot[0].highlighted
+                self.player.state = "Lunch"
+            elif evt.type == pygame.KEYDOWN and evt.key == pygame.K_2 and self.player.isJump == False:
+                self.slot[1].highlighted = not self.slot[1].highlighted
+                self.player.state = "Gym"
+            elif evt.type == pygame.KEYDOWN and evt.key == pygame.K_3 and self.player.isJump == False:
+                self.slot[2].highlighted = not self.slot[2].highlighted
+                self.player.state = "Math"
+            elif evt.type == pygame.KEYDOWN and evt.key == pygame.K_4 and self.player.isJump == False:
+                self.slot[3].highlighted = not self.slot[3].highlighted
+                self.player.state = "English"
+            elif evt.type == pygame.KEYDOWN and evt.key == pygame.K_5 and self.player.isJump == False:
+                self.slot[4].highlighted = not self.slot[4].highlighted
+                self.player.state = "Band"
+
+    def draw(self):
+        """Display objects"""
+        pygame.draw.rect(self.surf, (25, 25, 25), (50, 50, 325, 65))
+        for s in self.slot:
+            s.draw_slots()
+        for m in self.mask:
+            m.draw_mask()
+            
+            
+### S C H O O L     R O O M     C O D E ###
+
+
+class SchoolRooms:
+    def __init__(self, player, game):
+        """The constructor"""
+        self.player = player
+        self.game = game
+
+
+    def lunch_state(self):
+        """Lunch state"""
+        if self.player.pos[0] + (self.player.rect.width / 2) >= (self.game.door_4.rect.width + 2350) and \
+                self.player.pos[0] - (self.player.rect.width / 2) <= (self.game.door_4.rect.width + 2450) and \
+                self.player.pos[1] >= (self.game.door_4.rect.height + 400):
+            for event in self.game.gameEvent:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                    self.game.state = "School"
+                    self.player.pos[0] = 1500
+                    self.player.pos[1] = 605
+
+
+    def gym_state(self):
+        """Gym state"""
+        if self.player.pos[0] + (self.player.rect.width / 2) >= (self.game.door_4.rect.width + 2350) and \
+                self.player.pos[0] - (self.player.rect.width / 2) <= (self.game.door_4.rect.width + 2450) and \
+                self.player.pos[1] >= (self.game.door_4.rect.height + 400):
+            for event in self.game.gameEvent:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                    self.game.state = "School"
+                    self.player.pos[0] = 2000
+                    self.player.pos[1] = 605
+
+
+    def math_state(self):
+        """Math state"""
+        if self.player.pos[0] + (self.player.rect.width / 2) >= (self.game.door_5.rect.width + 2350) and \
+                self.player.pos[0] - (self.player.rect.width / 2) <= (self.game.door_5.rect.width + 2450) and \
+                self.player.pos[1] >= (self.game.door_4.rect.height + 300):
+            for event in self.game.gameEvent:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                    self.game.state = "School"
+                    self.player.pos[0] = 2500
+                    self.player.pos[1] = 325
+
+
+    def english_state(self):
+        """English state"""
+        if self.player.pos[0] + (self.player.rect.width / 2) >= (self.game.door_5.rect.width + 2350) and \
+                self.player.pos[0] - (self.player.rect.width / 2) <= (self.game.door_5.rect.width + 2450) and \
+                self.player.pos[1] >= (self.game.door_4.rect.height + 300):
+            for event in self.game.gameEvent:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                    self.game.state = "School"
+                    self.player.pos[0] = 3000
+                    self.player.pos[1] = 325
+
+
+    def band_state(self):
+        """Band state"""
+        if self.player.pos[0] + (self.player.rect.width / 2) >= (self.game.door_5.rect.width + 2350) and \
+                self.player.pos[0] - (self.player.rect.width / 2) <= (self.game.door_5.rect.width + 2450) and \
+                self.player.pos[1] >= (self.game.door_4.rect.height + 300):
+            for event in self.game.gameEvent:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+                    self.game.state = "School"
+                    self.player.pos[0] = 3500
+                    self.player.pos[1] = 325
